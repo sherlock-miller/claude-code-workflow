@@ -1,153 +1,122 @@
-# Claude Code Workflow — 一键安装包
+# Claude Code Workflow
 
-> Claude Code + DeepSeek 全套工作流，一条命令部署到 Windows。
+> 这是一套 Claude Code 工作流配置的**参考实现和快速部署工具**——把我在 Windows 上日常使用的配置、工具和脚本打包成一个可复用的安装器。**它不是"一键变大神"的魔法，而是一个帮你省去手动配置时间的起点。**
 
-## 这是什么？
+## 这个项目做了什么
 
-一套经过数月打磨的 Claude Code 工作流配置，包含：
+本质上就一件事：**把你需要手动编辑的配置文件（settings.json / mcp.json / .bashrc / CLAUDE.md 等），通过模板渲染自动生成并部署到正确的位置。** 同时附带了一些我日常使用的 Python/Node.js 工具脚本和 MCP 服务器。
 
-- **AI 后端**：DeepSeek V4 Pro（128K 上下文）+ Claude Code 2.1.153
-- **4 个 MCP 服务器**：Edge 浏览器控制 / Obsidian 笔记 /  Microsoft 365 / AutoCAD（可选）
-- **14 个自定义工具**：多模态视觉识别 / PDF 批量处理 / RAG 知识库 / Word 文档生成 / 会话管理
-- **6 个 Skills**：批量信息处理 / 日常自动化 / 文件整理 / Obsidian 控制
-- **8 个 CLI 增强**：starship 提示符 / fzf 搜索 / zoxide 跳转 / ripgrep / eza / bat / delta / pandoc
-- **15 条行为规则**：中文回复 / 自主闭环 / 遇墙问梯 / 官方文档优先 等
+它的价值在于：**如果你本来就打算配置这些东西，它能帮你从半天的手动配置缩短到几分钟。** 如果你不知道这些东西是什么、为什么要配置它们，那这个项目目前对你来说参考价值大于实用价值。
+
+## 功能与评估
+
+以下是对每个组件的诚实评估，按实用程度排序。
+
+### 高价值部分
+
+| 功能 | 实际是什么 | 为什么有用 |
+|------|-----------|-----------|
+| **Claude Code 环境配置** | 自动安装 Claude Code + 配置 DeepSeek API 作为后端 | DeepSeek API 价格远低于 Anthropic 官方，日常使用一个月几块钱。省去手动折腾环境变量和模型映射 |
+| **8 个 CLI 工具** | starship / fzf / zoxide / ripgrep / eza / bat / delta / pandoc | 都是开源社区广泛使用的终端效率工具，独立于 AI 编程也能大幅提升命令行体验。starship 美化提示符，fzf 模糊搜索历史，zoxide 智能跳转目录 |
+| **15 条行为规则** | CLAUDE.md 中的行为约束 | 让 Claude Code 始终用中文回复、主动闭环任务、优先查官方文档等。这些规则本身不依赖任何工具，可以直接复制使用 |
+| **会话管理工具** | session_manager.py + session_questions.py | 在终端里快速搜索、恢复历史会话。解决 Claude Code 对话多了之后找不回来的问题 |
+
+### 有门槛但可能有用
+
+| 功能 | 实际是什么 | 限制和前提 |
+|------|-----------|-----------|
+| **Edge 浏览器 MCP** | 通过 CDP 协议控制一个独立 Edge 实例，实现网页自动化 | 需要额外启动专用 Edge 实例。对做网页调试/自动化的开发者有用 |
+| **ms365 MCP** | 通过 Microsoft Graph API 操作邮件/日历/OneDrive | 首次需要 OAuth 浏览器登录。需要 Microsoft 365 账号 |
+| **Python 工具集** | 多模态视觉识别（豆包 API）/ PDF 批量转 Markdown / Chroma RAG 知识库 / Word 文档生成 | 每个工具依赖不同的 Python 包和 API Key。视觉识别需要单独的豆包/ARK API Key |
+| **本地 Skills** | 批量信息处理 / 文件整理 / 日常自动化 / Obsidian 控制 | 通用性一般，更多是我个人场景的参考实现 |
+
+### 安装门槛较高（不建议普通用户装）
+
+| 功能 | 为什么门槛高 |
+|------|------------|
+| **Obsidian MCP** | 需要 Obsidian 以特定参数启动、有独立的 vault 目录结构 |
+| **AutoCAD MCP** | 需要 AutoCAD 2024-2026 + pywin32，纯 Windows + 商用软件依赖 |
+
+### ⚠️ 关于 MCP 工具数量的提醒
+
+MCP 服务器并非越多越好。注册过多工具可能导致 Claude Code 在工具选择时出现遗漏，甚至你都不知道 AI "看不到"某些工具了。**建议只启用自己真正需要的，而不是全装。**
+
+## 关于 AI 后端
+
+这个项目**不提供任何 AI 模型**。它默认配置使用 **DeepSeek 的公开 API**（模型 ID: `deepseek-v4-pro`），通过 DeepSeek 官方的 Anthropic 兼容端点调用。你需要自己去 [DeepSeek 平台](https://platform.deepseek.com/api_keys) 注册并获取 API Key。
+
+如果你更倾向于用 Anthropic 官方 API，修改 `settings.json` 中的 `ANTHROPIC_BASE_URL` 即可。
 
 ## 前置条件
 
 | 需要 | 说明 |
 |------|------|
-| Windows 10/11 | 64 位 |
-| Git for Windows | 提供 Git Bash 环境 |
-| 网络连接 | 下载依赖 + API 调用 |
+| Windows 10/11 | 当前只支持 Windows |
+| Git for Windows | 提供 Git Bash 终端环境 |
+| 网络 | 下载依赖需要 |
 
-**其他一切（Node.js / Python / Claude Code / CLI 工具）由安装器自动处理。**
+Node.js 和 Python 安装器会自动检测，缺失时提示你安装。
 
-## 快速安装
+## 安装
 
-### 方式一：一行命令（推荐）
-
-在 **Git Bash** 中运行：
-
-```bash
-powershell -ExecutionPolicy Bypass -Command "iex (irm https://raw.githubusercontent.com/sherlock-miller/claude-code-workflow/main/bootstrap.ps1)"
-```
-
-### 方式二：手动克隆
+**建议先 clone 再看代码，确认没问题再运行：**
 
 ```bash
 git clone https://github.com/sherlock-miller/claude-code-workflow.git
 cd claude-code-workflow
+# 阅读 install.ps1 后再决定是否运行
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-### 安装选项
+如果选择最小安装（跳过所有可选组件）：
 
 ```bash
-# 完整安装（所有组件）
-powershell -File install.ps1 -Full
-
-# 最小安装（只有核心配置）
-powershell -File install.ps1 -Quick
-
-# 非交互式安装（预先提供参数）
-powershell -File install.ps1 -Yes -DeepSeekKey "sk-your-key" -WorkspaceDir "C:\Users\you\projects"
+powershell -ExecutionPolicy Bypass -File install.ps1 -Quick
 ```
+
+也有不安全的快捷方式（`iex`），但**不推荐**——你应该先看代码。
 
 ## 安装后
 
 ```bash
 # 重启 Git Bash，然后：
 cc                              # 启动 Claude Code
-ccc                             # 恢复上次会话
-claude-workflow verify          # 运行诊断检查
-claude-workflow status          # 快速状态
-claude-workflow update          # 更新到最新版
+claude-workflow verify          # 诊断检查
 ```
 
-## 安全与已知限制
+## API Key 说明
 
-### 关于 `iex (irm ...)` 远程执行
+安装过程中需要输入 DeepSeek API Key（必填），可选输入豆包 ARK API Key（用于视觉识别工具）。
 
-安装命令从 GitHub 拉取脚本直接执行。如果你对此有安全顾虑，可以用更稳妥的方式：
-
-```bash
-git clone https://github.com/sherlock-miller/claude-code-workflow.git
-# 先阅读 install.ps1，确认没有问题
-cd claude-code-workflow
-powershell -ExecutionPolicy Bypass -File install.ps1
-```
-
-### MCP 服务器需要额外配置
-
-安装器会将 MCP 服务器注册到 `mcp.json`，但以下组件需要你手动完成授权：
-
-| 组件 | 额外步骤 |
-|------|----------|
-| **Edge CDP** | 首次使用运行 `node ~/.claude/edge-mcp/launch-claude-edge.cjs` 启动专用 Edge 实例 |
-| **ms365 MCP** | 运行 `npx @softeria/ms-365-mcp-server --login` 完成 OAuth 浏览器登录 |
-| **Obsidian MCP** | Obsidian 需以 `--remote-debugging-port=9225` 参数启动 |
-| **AutoCAD MCP** | 需安装 AutoCAD 2024-2026 + `pywin32` Python 包 |
-
-### .env 文件中的 API Key 是明文存储
-
-`~/.claude/.env` 中的 Key 使用文件系统 ACL 限制为仅当前用户可读，但内容是明文。如果你需要真正的加密存储，可以考虑使用 Windows 凭据管理器或第三方密钥管理工具。
-
-## API 密钥获取
-
-安装过程中会提示输入两个 API Key：
-
-| API | 用途 | 获取地址 |
-|-----|------|----------|
-| DeepSeek | Claude Code 的 AI 引擎（必填） | https://platform.deepseek.com/api_keys |
-| 豆包 ARK | 图片/PDF 视觉识别（可选） | https://console.volcengine.com/ark |
-
-Key 存储在 `~/.claude/.env` 中（文件权限限制为仅当前用户可读），不会上传或分享。
-
-## 组件说明
-
-| 组件 | 说明 | 依赖 |
-|------|------|------|
-| **core** | settings.json / CLAUDE.md / hooks | 必装 |
-| **edge-cdp** | Edge 浏览器 MCP（22 个工具，独立 profile） | Node.js |
-| **obsidian-mcp** | Obsidian 笔记控制 MCP（8 个工具） | Node.js + Obsidian |
-| **autocad-mcp** | AutoCAD 图层/样式管理 MCP（21 个工具） | Python + AutoCAD |
-| **ms365-mcp** | Microsoft 365 集成（邮件/日历/OneDrive） | Node.js |
-| **cli-tools** | starship/fzf/zoxide/rg/eza/bat/delta | 无 |
-| **python-tools** | 视觉识别 / 文档处理 / RAG / Word 生成 | Python |
-| **skills** | 批量处理 / 文件整理 / 日常自动化 | 无 |
+Key 存储在 `~/.claude/.env` 中，文件权限限制为仅当前用户可读，但内容是明文。如需要更强的安全措施，建议使用 Windows 凭据管理器。
 
 ## 文件结构
 
 ```
 ~/.claude/                        # 安装后的目录
-├── settings.json                 # 全局配置（权限/hooks/API）
+├── settings.json                 # 全局配置
 ├── mcp.json                      # MCP 服务器注册
-├── CLAUDE.md                     # 行为规则和能力定义
-├── .env                          # API Key（仅本地，gitignored）
-├── .workflow-version             # 版本追踪
-├── installed_paths.json          # 机器路径注册表
-├── hooks/
-│   ├── notify.ps1                # 任务完成通知（Toast+蜂鸣）
-│   └── validate-path.ps1         # 工作区边界保护
-├── tools/                        # Python + Node.js 工具脚本
-├── edge-mcp/                     # Edge CDP MCP 服务器
-├── obsidian-mcp/                 # Obsidian MCP 服务器（可选）
-├── autocad-mcp/                  # AutoCAD MCP 服务器（可选）
-├── skills/                       # 本地技能定义
-├── scripts/                      # 维护脚本（verify/update）
-└── projects/                     # Memory 系统（自动积累）
+├── CLAUDE.md                     # 行为规则和能力说明
+├── .env                          # API Key
+├── hooks/                        # 通知和路径保护
+├── tools/                        # Python + Node.js 工具
+├── edge-mcp/                     # Edge CDP 服务器
+├── skills/                       # 本地技能
+└── scripts/                      # 维护脚本
 ```
 
 ## 卸载
 
 ```bash
-# 删除安装目录即可
 rm -rf ~/.claude/
-
-# 清理 bashrc 中的集成块（手动编辑或运行）
-powershell -Command "(Get-Content ~/.bashrc) -replace '(?s)# >>> claude-workflow.*# <<< claude-workflow\r?\n?', '' | Set-Content ~/.bashrc"
+# 在 ~/.bashrc 中删除 "# >>> claude-workflow" 到 "# <<< claude-workflow" 之间的内容
 ```
+
+## 贡献与交流
+
+这个项目的目标是**降低 Claude Code 工作流配置的门槛**，让更多人能快速上手，并在此基础上共同改进配置方案。
+
+如果你有更好的工具、更优雅的配置方式，或者发现了 bug，欢迎提 Issue 或 PR。如果你基于这套配置做了自己的定制版本，也欢迎分享经验。
 
 ## License
 
