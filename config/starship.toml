@@ -1,0 +1,33 @@
+# Starship -- minimal clean prompt
+
+format = "$directory$git_branch$git_status$cmd_duration$python$nodejs$character"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "fg:#61afef bold"
+
+[git_branch]
+format = " [$branch]($style)"
+style = "fg:#abb2bf"
+
+[git_status]
+format = "[$conflicted$deleted$renamed$modified$staged$untracked]($style)"
+style = "fg:#e5c07b"
+
+[cmd_duration]
+min_time = 3000
+format = " [$duration]($style)"
+style = "fg:#5c6370"
+
+[python]
+format = " [$symbol$version]($style)"
+style = "fg:#98c379"
+
+[nodejs]
+format = " [$symbol$version]($style)"
+style = "fg:#98c379"
+
+[character]
+success_symbol = "[❯](bold fg:#98c379)"
+error_symbol = "[❯](bold fg:#e06c75)"

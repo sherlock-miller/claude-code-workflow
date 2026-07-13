@@ -1,0 +1,84 @@
+﻿param()
+$PSDefaultParameterValues = @{ "*:Encoding" = "utf8" }
+
+# DIAG
+try { mkdir C:\Temp -Force *>$null } catch {}
+try { "[DIAG] $(Get-Date -uformat '%H:%M:%S') hook invoked" | Out-File -FilePath C:\Temp\claude-hook-diag.log -Append -Encoding ascii } catch {}
+
+$rawInput = $null
+try {
+    $rawInput = [Console]::In.ReadToEnd()
+    if (-not $rawInput) { exit 0 }
+} catch { exit 0 }
+
+$event = $null
+try { $event = $rawInput | ConvertFrom-Json } catch { exit 0 }
+
+$toolName = $event.tool_name
+$toolInput = $event.tool_input
+
+$ws = $event.project_directory
+if (-not $ws) { $ws = $env:CLAUDE_PROJECT_DIR }
+if (-not $ws) {
+    $ws = [System.IO.Path]::GetFullPath((Get-Location).Path).TrimEnd("\", "/")
+} else {
+    $ws = [System.IO.Path]::GetFullPath($ws).TrimEnd("\", "/")
+}
+
+$homeDir = [Environment]::GetFolderPath("UserProfile")
+$allowed = @(
+    "{{WORKSPACE_DIR}}",
+    (Join-Path $homeDir ".claude"),
+    (Join-Path $homeDir "AppData\Roaming\Code\User")
+    {{#if OBSIDIAN_VAULT}}
+    ,"{{OBSIDIAN_VAULT}}"
+    {{/if}}
+    {{#each EXTRA_ALLOWED_PATHS}}
+    ,"{{this}}"
+    {{/each}}
+)
+
+function SafePath($p) {
+    if (-not $p) { return $null }
+    if ([System.IO.Path]::IsPathRooted($p)) { return [System.IO.Path]::GetFullPath($p) }
+    return [System.IO.Path]::GetFullPath((Join-Path $ws $p))
+}
+
+function InWorkspace($p) {
+    if (-not $p) { return $true }
+    if ($p -eq $ws) { return $true }
+    if ($p.StartsWith($ws + "\")) { return $true }
+    foreach ($a in $allowed) {
+        if ($p -eq $a) { return $true }
+        if ($p.StartsWith($a + "\")) { return $true }
+    }
+    return $false
+}
+
+# File write/edit: inside workspace = allow, outside = ask user for permission
+if ($toolName -eq "Write" -or $toolName -eq "Edit" -or $toolName -eq "NotebookEdit") {
+    $target = $toolInput.file_path
+    if ($target) {
+        $resolved = SafePath $target
+        if (-not (InWorkspace $resolved)) {
+            $askObj = @{
+                hookSpecificOutput = @{
+                    hookEventName = "PreToolUse"
+                    permissionDecision = "ask"
+                    permissionDecisionReason = "Outside workspace: $resolved (workspace: $ws) - Confirm to proceed"
+                }
+            }
+            Write-Output (ConvertTo-Json -Compress $askObj)
+            exit 0
+        }
+    }
+}
+
+$allowObj = @{
+    hookSpecificOutput = @{
+        hookEventName = "PreToolUse"
+        permissionDecision = "allow"
+    }
+}
+Write-Output (ConvertTo-Json -Compress $allowObj)
+exit 0

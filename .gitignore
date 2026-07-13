@@ -1,0 +1,49 @@
+# Claude Code Workflow
+
+# Secrets - NEVER commit (templates are OK)
+.env
+*.env
+!*.template
+!*.example
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
+projects/
+sessions/
+archived_sessions/
+cache/
+plans/
+tasks/
+file-history/
+paste-cache/
+backups/
+telemetry/
+session-env/
+edge-profile/
+
+# Build / Release artifacts
+*.zip
+*.tar.gz
+
+# Test artifacts
+test-output/

@@ -1,0 +1,15 @@
+{
+  "name": "obsidian-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local MCP server for controlling the Obsidian desktop app via Electron CDP",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs",
+    "smoke": "node smoke-test.cjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.0",
+    "playwright-core": "^1.54.0"
+  }
+}

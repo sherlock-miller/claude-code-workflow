@@ -1,0 +1,47 @@
+# Claude Code Workflow - Shell Integration
+# >>> claude-workflow begin
+# This block is managed by claude-code-workflow installer/updater
+
+# ─── PATH ───
+export PATH="$HOME/.local/bin:$PATH"
+
+# ─── Claude Code API Configuration ───
+export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
+export ANTHROPIC_MODEL="deepseek-v4-pro[1m]"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="deepseek-v4-flash"
+export CLAUDE_CODE_SUBAGENT_MODEL="deepseek-v4-flash"
+export CLAUDE_CODE_EFFORT_LEVEL="max"
+export DISABLE_AUTOUPDATER="1"
+
+# ─── Load API Keys ───
+if [ -f "$HOME/.claude/.env" ]; then
+    set -a
+    source "$HOME/.claude/.env"
+    set +a
+fi
+
+# ─── Claude Code Aliases ───
+alias cc="claude"
+alias ccc="claude --resume"
+alias ccconfig="claude /config"
+
+# ─── Workflow Management ───
+claude-workflow() {
+    local cmd="$1"; shift
+    local install_dir="$HOME/.claude"
+    case "$cmd" in
+        update)  powershell -NoProfile -ExecutionPolicy Bypass -File "$install_dir/scripts/update.ps1" "$@" ;;
+        verify)  powershell -NoProfile -ExecutionPolicy Bypass -File "$install_dir/scripts/verify.ps1" "$@" ;;
+        status)  powershell -NoProfile -ExecutionPolicy Bypass -File "$install_dir/scripts/verify.ps1" -Quick ;;
+        help)    echo "Usage: claude-workflow {update|verify|status|help}" ;;
+        *)       echo "Usage: claude-workflow {update|verify|status|help}" ;;
+    esac
+}
+
+# ─── Editor ───
+export EDITOR="code --wait"
+export VISUAL="code --wait"
+
+# <<< claude-workflow end

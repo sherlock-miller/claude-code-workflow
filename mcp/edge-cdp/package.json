@@ -1,0 +1,19 @@
+{
+  "name": "edge-cdp-mcp",
+  "version": "1.2.0",
+  "description": "MCP server for controlling Microsoft Edge via CDP + Playwright with Doubao vision AI integration",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "launch": "node launch-claude-edge.cjs",
+    "sync": "node sync-cookies.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.0",
+    "playwright": "^1.54.0"
+  },
+  "devDependencies": {},
+  "keywords": ["mcp", "edge", "cdp", "playwright", "browser-automation"],
+  "license": "MIT"
+}

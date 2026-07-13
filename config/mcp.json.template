@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "edge-cdp": {
+      "command": "node",
+      "args": ["{{INSTALL_DIR}}\\edge-mcp\\server.js"],
+      "env": {
+        "EDGE_CDP_URL": "http://127.0.0.1:9224"
+      }
+    }{{#if OBSIDIAN_ENABLED}},
+    "obsidian": {
+      "command": "node",
+      "args": ["{{INSTALL_DIR}}\\obsidian-mcp\\server.cjs"],
+      "env": {
+        "OBSIDIAN_CDP_URL": "http://127.0.0.1:9225",
+        "OBSIDIAN_VAULT_PATH": "{{OBSIDIAN_VAULT}}"
+      }
+    }{{/if}}{{#if AUTOCAD_ENABLED}},
+    "autocad": {
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{INSTALL_DIR}}\\autocad-mcp\\autocad_mcp_server.py"]
+    }{{/if}}
+  }
+}
+{{#if MS365_ENABLED}}
+// ms365 MCP must be installed at project level:
+// Run: npx -y @softeria/ms-365-mcp-server --scope user
+// Then login: npx @softeria/ms-365-mcp-server --login
+{{/if}}
