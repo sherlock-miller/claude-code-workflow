@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Claude Code Workflow - One-Line Bootstrap
 Usage: powershell -ExecutionPolicy Bypass -Command "iex (irm https://raw.githubusercontent.com/sherlock-miller/claude-code-workflow/main/bootstrap.ps1)"

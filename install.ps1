@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Claude Code Workflow - One-Click Installer
 Installs the complete Claude Code + DeepSeek workflow environment on Windows.
@@ -21,6 +21,7 @@ param(
     [switch] $Yes,          # Skip all prompts, use defaults
     [switch] $Quick,        # Minimal install (core only)
     [switch] $Full,         # Install everything
+    [switch] $TestMode,     # Install to temp dir for testing
     [string] $WorkspaceDir, # Pre-set workspace directory
     [string] $DeepSeekKey,  # Pre-set DeepSeek API key
     [string] $ArkKey        # Pre-set Doubao/ARK API key
@@ -34,11 +35,29 @@ Import-Module "$ScriptDir\ClaudeWorkflow\ClaudeWorkflow.psm1" -Force
 
 $VERSION = "1.0.0"
 
+# ─── Test Mode: redirect everything to temp directory ───
+if ($TestMode) {
+    $TestRoot = Join-Path $env:TEMP "cwf-test-$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    $env:CWF_TEST_ROOT = $TestRoot
+    $WorkspaceDir = Join-Path $TestRoot "workspace"
+    New-Item -ItemType Directory -Force -Path $WorkspaceDir | Out-Null
+    $DeepSeekKey = "sk-test-deepseek-key-for-validation"
+    $ArkKey = "ark-test-key-for-validation"
+    $Yes = $true
+    $extraPaths = @()
+    $obsidianVault = ""
+    Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
+    Write-Host "║     TEST MODE - Installing to temp directory                  ║" -ForegroundColor Magenta
+    Write-Host "║     $TestRoot" -ForegroundColor DarkGray
+    Write-Host "║     Your real ~/.claude/ will NOT be touched.                 ║" -ForegroundColor Magenta
+    Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+}
+
 # ════════════════════════════════════════════════════════════════
 # 1. PREFLIGHT
 # ════════════════════════════════════════════════════════════════
 
-Clear-Host
+if (-not $TestMode) { Clear-Host }
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║     Claude Code Workflow Installer   v$VERSION                  ║" -ForegroundColor Cyan
@@ -94,6 +113,16 @@ if ($Quick) {
     $installPythonTools = $false
     $installSkills = $false
     $installNpmSkills = $false
+} elseif ($TestMode) {
+    # Test mode: core + python tools + skills, no MCPs/cli
+    $installEdgeCdp = $false
+    $installObsidian = $false
+    $installAutocad = $false
+    $installMs365 = $false
+    $installCliTools = $false
+    $installPythonTools = $true
+    $installSkills = $true
+    $installNpmSkills = $false
 } elseif ($Full) {
     $installEdgeCdp = $true
     $installObsidian = $true
@@ -128,6 +157,10 @@ if (-not $WorkspaceDir) {
 New-Item -ItemType Directory -Force -Path $WorkspaceDir | Out-Null
 
 $installDir = Join-Path $env:USERPROFILE ".claude"
+
+if ($TestMode) {
+    $installDir = Join-Path $TestRoot ".claude"
+}
 
 if ($installObsidian -and -not $Yes) {
     $obsidianVault = Read-Host "  Obsidian vault path [skip if none]"
@@ -182,7 +215,7 @@ Write-Host "Step 3/5: Installing Files" -ForegroundColor Yellow
 Write-Host "────────────────────────────" -ForegroundColor Yellow
 
 # Prepare install directory
-if (Test-Path $installDir) {
+if ((Test-Path $installDir) -and (-not $TestMode)) {
     $existingVersion = "$installDir\.workflow-version"
     if (Test-Path $existingVersion) {
         Write-Host "  Existing claude-workflow installation detected. Upgrading..." -ForegroundColor Yellow
@@ -300,8 +333,17 @@ if ($installPythonTools) {
     if ($envInfo.HasPython) {
         $reqPath = "$ScriptDir\tools\python\requirements.txt"
         if (Test-Path $reqPath) {
-            pip install -r $reqPath --quiet 2>&1 | ForEach-Object { if ($_ -match "ERROR") { Write-Host "    $_" -ForegroundColor Red } }
-            Write-Host "    [OK] Python dependencies installed"
+            $prevEAP = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+            pip install -r $reqPath --quiet 2>&1 | ForEach-Object {
+                if ($_ -match "ERROR|error:") { Write-Host "    $_" -ForegroundColor Red }
+            }
+            $ErrorActionPreference = $prevEAP
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "    [WARN] Some pip packages may have failed" -ForegroundColor Yellow
+            } else {
+                Write-Host "    [OK] Python dependencies installed"
+            }
         }
     } else {
         Write-Host "    [WARN] Python not found, skipping pip install" -ForegroundColor Yellow
@@ -317,25 +359,30 @@ Write-Host ""
 Write-Host "Step 4/5: Shell Integration" -ForegroundColor Yellow
 Write-Host "─────────────────────────────" -ForegroundColor Yellow
 
-# .bashrc
-$bashrcSnippet = Get-Content "$ScriptDir\config\bashrc-snippet.template" -Raw -Encoding UTF8
-Merge-Bashrc -SnippetContent $bashrcSnippet
-
-# .gitconfig
-if ($gitName -or $gitEmail) {
-    Merge-Gitconfig -UserName $gitName -UserEmail $gitEmail
+if ($TestMode) {
+    Write-Host "  [SKIP] Test mode: shell integration skipped" -ForegroundColor DarkGray
+    Write-Host "  [SKIP] Test mode: .bashrc / .gitconfig / starship untouched" -ForegroundColor DarkGray
 } else {
-    Write-Host "  [SKIP] Git config (keep existing)"
-}
+    # .bashrc
+    $bashrcSnippet = Get-Content "$ScriptDir\config\bashrc-snippet.template" -Raw -Encoding UTF8
+    Merge-Bashrc -SnippetContent $bashrcSnippet
 
-# Starship
-$starshipSrc = "$ScriptDir\config\starship.toml"
-$starshipDest = "$env:USERPROFILE\.config\starship.toml"
-if (Test-Path $starshipSrc) {
-    New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.config" | Out-Null
-    if (-not (Test-Path $starshipDest)) {
-        Copy-Item $starshipSrc $starshipDest -Force
-        Write-Host "  [OK] Starship config installed"
+    # .gitconfig
+    if ($gitName -or $gitEmail) {
+        Merge-Gitconfig -UserName $gitName -UserEmail $gitEmail
+    } else {
+        Write-Host "  [SKIP] Git config (keep existing)"
+    }
+
+    # Starship
+    $starshipSrc = "$ScriptDir\config\starship.toml"
+    $starshipDest = "$env:USERPROFILE\.config\starship.toml"
+    if (Test-Path $starshipSrc) {
+        New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.config" | Out-Null
+        if (-not (Test-Path $starshipDest)) {
+            Copy-Item $starshipSrc $starshipDest -Force
+            Write-Host "  [OK] Starship config installed"
+        }
     }
 }
 
@@ -406,6 +453,29 @@ if ($installNpmSkills) {
 # ════════════════════════════════════════════════════════════════
 # DONE
 # ════════════════════════════════════════════════════════════════
+
+if ($TestMode) {
+    Write-Host ""
+    Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
+    Write-Host "║     TEST MODE - Installation Complete!                       ║" -ForegroundColor Magenta
+    Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+    Write-Host ""
+    Write-Host "  Test install directory: $installDir" -ForegroundColor Yellow
+    Write-Host "  Test workspace:         $WorkspaceDir" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Files created:" -ForegroundColor Cyan
+    Get-ChildItem $installDir -Recurse -File | ForEach-Object {
+        $relPath = $_.FullName.Substring($installDir.Length + 1)
+        Write-Host "    $relPath" -ForegroundColor DarkGray
+    }
+    $fileCount = (Get-ChildItem $installDir -Recurse -File).Count
+    Write-Host ""
+    Write-Host "  Total: $fileCount files installed to test directory" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  To clean up: Remove-Item -Recurse -Force '$TestRoot'" -ForegroundColor DarkGray
+    Write-Host ""
+    exit 0
+}
 
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green

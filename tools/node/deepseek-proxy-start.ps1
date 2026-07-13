@@ -1,4 +1,4 @@
-# DeepSeek Proxy — Start script
+﻿# DeepSeek Proxy — Start script
 # Auto-starts the message format proxy for DeepSeek Anthropic Gateway
 #
 # The proxy transforms Claude Code 2.1.154+ requests:

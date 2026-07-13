@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$Action = "launch",
   [string]$VaultPath = "",
   [int]$DebugPort = 9223,

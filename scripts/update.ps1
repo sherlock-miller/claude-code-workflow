@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Claude Code Workflow - Update Script
 Compares local version with latest release and applies updates.

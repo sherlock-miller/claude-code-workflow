@@ -1,4 +1,4 @@
-# Claude Code Workflow - Shared PowerShell Module
+﻿# Claude Code Workflow - Shared PowerShell Module
 # Functions used by install.ps1, update.ps1, and verify.ps1
 
 # ─── Template Rendering ───
@@ -39,7 +39,8 @@ function Invoke-TemplateRendering {
             {
                 param($m)
                 $varName = $m.Groups[1].Value
-                if ($Tokens.ContainsKey($varName) -and $Tokens[$varName]) {
+                $val = $Tokens[$varName]
+                if ($Tokens.ContainsKey($varName) -and $val -and $val -ne "false") {
                     return $m.Groups[2].Value
                 }
                 return ""
@@ -198,6 +199,7 @@ function Write-PathRegistry {
         [string] $RegistryPath = "$env:USERPROFILE\.claude\installed_paths.json",
         [hashtable] $Data
     )
+    $ov = if ($Data.ObsidianVault) { $Data.ObsidianVault } else { "" }
     $registry = @{
         version    = $Data.Version
         created_at = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
@@ -205,7 +207,7 @@ function Write-PathRegistry {
             install_dir     = $Data.InstallDir
             workspace_dir   = $Data.WorkspaceDir
             python          = $Data.PythonPath
-            $v = $Data.ObsidianVault; obsidian_vault = if ($null -ne $v) { $v } else { "" }
+            obsidian_vault  = $ov
         }
         features   = @{
             edge_cdp    = $Data.EdgeCdpEnabled
