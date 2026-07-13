@@ -169,7 +169,7 @@ C:\Users\你的用户名\
     ├── settings.json             ← 全局配置
     ├── mcp.json                  ← MCP 服务器注册
     ├── CLAUDE.md                 ← 行为规则和工具说明
-    ├── .env                      ← API Key（加密存储，仅本地）
+    ├── .env                      ← API Key（仅当前用户可读）
     ├── installed_paths.json      ← 路径注册表
     ├── hooks\                    ← 钩子脚本
     │   ├── notify.ps1            ← 任务完成通知

@@ -65,6 +65,34 @@ claude-workflow status          # 快速状态
 claude-workflow update          # 更新到最新版
 ```
 
+## 安全与已知限制
+
+### 关于 `iex (irm ...)` 远程执行
+
+安装命令从 GitHub 拉取脚本直接执行。如果你对此有安全顾虑，可以用更稳妥的方式：
+
+```bash
+git clone https://github.com/sherlock-miller/claude-code-workflow.git
+# 先阅读 install.ps1，确认没有问题
+cd claude-code-workflow
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+### MCP 服务器需要额外配置
+
+安装器会将 MCP 服务器注册到 `mcp.json`，但以下组件需要你手动完成授权：
+
+| 组件 | 额外步骤 |
+|------|----------|
+| **Edge CDP** | 首次使用运行 `node ~/.claude/edge-mcp/launch-claude-edge.cjs` 启动专用 Edge 实例 |
+| **ms365 MCP** | 运行 `npx @softeria/ms-365-mcp-server --login` 完成 OAuth 浏览器登录 |
+| **Obsidian MCP** | Obsidian 需以 `--remote-debugging-port=9225` 参数启动 |
+| **AutoCAD MCP** | 需安装 AutoCAD 2024-2026 + `pywin32` Python 包 |
+
+### .env 文件中的 API Key 是明文存储
+
+`~/.claude/.env` 中的 Key 使用文件系统 ACL 限制为仅当前用户可读，但内容是明文。如果你需要真正的加密存储，可以考虑使用 Windows 凭据管理器或第三方密钥管理工具。
+
 ## API 密钥获取
 
 安装过程中会提示输入两个 API Key：
@@ -74,7 +102,7 @@ claude-workflow update          # 更新到最新版
 | DeepSeek | Claude Code 的 AI 引擎（必填） | https://platform.deepseek.com/api_keys |
 | 豆包 ARK | 图片/PDF 视觉识别（可选） | https://console.volcengine.com/ark |
 
-Key 加密存储在 `~/.claude/.env` 中，不会被分享或上传。
+Key 存储在 `~/.claude/.env` 中（文件权限限制为仅当前用户可读），不会上传或分享。
 
 ## 组件说明
 
