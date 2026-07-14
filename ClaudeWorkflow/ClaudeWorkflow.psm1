@@ -270,6 +270,96 @@ function Backup-IfExists {
     }
 }
 
+# ─── Config Merging (v1.1) ───
+
+function Merge-Hashtable {
+    <#
+    .SYNOPSIS
+    Deep merge two hashtables. Override values from $Override are added or replace.
+    Arrays are merged with dedup.
+    #>
+    param(
+        [hashtable] $Base,
+        [hashtable] $Override
+    )
+    $result = @{}
+    # Copy base
+    foreach ($key in $Base.Keys) { $result[$key] = $Base[$key] }
+    # Merge override
+    foreach ($key in $Override.Keys) {
+        if (-not $result.ContainsKey($key)) {
+            $result[$key] = $Override[$key]
+        } elseif ($result[$key] -is [hashtable] -and $Override[$key] -is [hashtable]) {
+            $result[$key] = Merge-Hashtable -Base $result[$key] -Override $Override[$key]
+        } elseif ($result[$key] -is [array] -and $Override[$key] -is [array]) {
+            $merged = [System.Collections.ArrayList]::new()
+            foreach ($item in $result[$key]) { if ($item -notin $merged) { $null = $merged.Add($item) } }
+            foreach ($item in $Override[$key]) { if ($item -notin $merged) { $null = $merged.Add($item) } }
+            $result[$key] = $merged.ToArray()
+        } else {
+            $result[$key] = $Override[$key]
+        }
+    }
+    return $result
+}
+
+function Merge-SettingsJson {
+    <#
+    .SYNOPSIS
+    Merge a component patch into existing settings.json.
+    Adds permissions and MCP servers without overwriting existing config.
+    #>
+    param(
+        [string] $SettingsPath = "$env:USERPROFILE\.claude\settings.json",
+        [string] $PatchPath
+    )
+    if (-not (Test-Path $SettingsPath)) {
+        Write-Host "    [SKIP] No existing settings.json to merge into" -ForegroundColor Yellow
+        return
+    }
+    if (-not (Test-Path $PatchPath)) {
+        Write-Host "    [SKIP] Patch not found: $PatchPath" -ForegroundColor Yellow
+        return
+    }
+    try {
+        $existing = Get-Content $SettingsPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+        $patch = Get-Content $PatchPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+        $merged = Merge-Hashtable -Base $existing -Override $patch
+        $json = $merged | ConvertTo-Json -Depth 10
+        Set-Content $SettingsPath -Value $json -Encoding UTF8
+        Write-Host "    [OK] Merged $(Split-Path $PatchPath -Leaf) into settings.json"
+    } catch {
+        Write-Host "    [WARN] Failed to merge patch: $_" -ForegroundColor Yellow
+    }
+}
+
+function Merge-McpJson {
+    <#
+    .SYNOPSIS
+    Add MCP server entry to existing mcp.json without removing existing entries.
+    #>
+    param(
+        [string] $McpPath = "$env:USERPROFILE\.claude\mcp.json",
+        [string] $ServerId,
+        [hashtable] $ServerConfig
+    )
+    if (-not (Test-Path $McpPath)) { return }
+    try {
+        $existing = Get-Content $McpPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 5
+        if (-not $existing.ContainsKey("mcpServers")) { $existing["mcpServers"] = @{} }
+        $servers = $existing["mcpServers"]
+        if ($servers -is [hashtable] -and -not $servers.ContainsKey($ServerId)) {
+            $servers[$ServerId] = $ServerConfig
+            $existing | ConvertTo-Json -Depth 5 | Set-Content $McpPath -Encoding UTF8
+            Write-Host "    [OK] Added '$ServerId' to mcp.json"
+        } else {
+            Write-Host "    [SKIP] '$ServerId' already in mcp.json"
+        }
+    } catch {
+        Write-Host "    [WARN] Failed to update mcp.json: $_" -ForegroundColor Yellow
+    }
+}
+
 Export-ModuleMember -Function @(
     "Invoke-TemplateRendering",
     "Get-EnvironmentInfo",
@@ -281,5 +371,8 @@ Export-ModuleMember -Function @(
     "Test-Command",
     "Write-CheckResult",
     "Protect-SecretFile",
-    "Backup-IfExists"
+    "Backup-IfExists",
+    "Merge-Hashtable",
+    "Merge-SettingsJson",
+    "Merge-McpJson"
 )

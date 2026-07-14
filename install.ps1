@@ -22,6 +22,8 @@ param(
     [switch] $Quick,        # Minimal install (core only)
     [switch] $Full,         # Install everything
     [switch] $TestMode,     # Install to temp dir for testing
+    [switch] $Add,          # Incremental: add components to existing setup
+    [string] $Component,    # Comma-separated components to install (with -Add)
     [string] $WorkspaceDir, # Pre-set workspace directory
     [string] $DeepSeekKey,  # Pre-set DeepSeek API key
     [string] $ArkKey        # Pre-set Doubao/ARK API key
@@ -77,21 +79,32 @@ if (-not $envInfo.IsWindows) {
 
 # Check for existing Claude Code installation
 if (-not $envInfo.HasClaude) {
-    Write-Host "Claude Code is not installed. The installer will install it." -ForegroundColor Yellow
-    if (-not $Yes) {
-        $installCC = Read-Host "Install Claude Code globally? [Y/n]"
-        if ($installCC -eq "n" -or $installCC -eq "N") {
-            Write-Host "Claude Code is required. Aborting." -ForegroundColor Red
-            exit 1
+    if ($Add) {
+        Write-Host "  [INFO] Claude Code not detected, but -Add mode only installs components." -ForegroundColor Yellow
+        Write-Host "  Components will be copied; Claude Code is needed to use them." -ForegroundColor Yellow
+    } elseif ($TestMode) {
+        Write-Host "  [SKIP] Test mode: Claude Code install skipped" -ForegroundColor DarkGray
+    } else {
+        Write-Host "Claude Code is not installed. The installer can install it." -ForegroundColor Yellow
+        if (-not $Yes) {
+            $installCC = Read-Host "Install Claude Code globally? [Y/n]"
+            if ($installCC -eq "n" -or $installCC -eq "N") {
+                Write-Host "  [INFO] Skipping Claude Code install. Tools will be installed but need Claude Code to run." -ForegroundColor Yellow
+            } else {
+                Write-Host "  Installing Claude Code..." -ForegroundColor Cyan
+                npm install -g @anthropic-ai/claude-code@2.1.153
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "  [FAIL] Claude Code installation failed." -ForegroundColor Red
+                } else {
+                    Write-Host "  [OK] Claude Code installed"
+                }
+            }
+        } else {
+            Write-Host "  Installing Claude Code..." -ForegroundColor Cyan
+            npm install -g @anthropic-ai/claude-code@2.1.153 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) { Write-Host "  [OK] Claude Code installed" }
         }
     }
-    Write-Host "  Installing Claude Code..." -ForegroundColor Cyan
-    npm install -g @anthropic-ai/claude-code@2.1.153
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [FAIL] Claude Code installation failed. Please install Node.js first." -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "  [OK] Claude Code installed"
 }
 
 # ════════════════════════════════════════════════════════════════
@@ -104,6 +117,20 @@ Write-Host "──────────────────────�
 
 # ─── 2a. Component Selection ───
 
+# Sub-component variables
+$installVision = $installPythonTools  # initially follow python-tools
+$installDoc = $installPythonTools
+$installRag = $installPythonTools
+$installWord = $installPythonTools
+$installSession = $installPythonTools
+
+# Parse -Component param (comma-separated)
+$componentList = @()
+if ($Component) {
+    $componentList = $Component -split ',' | ForEach-Object { $_.Trim().ToLower() }
+    Write-Host "  -Component specified: $($componentList -join ', ')" -ForegroundColor Cyan
+}
+
 if ($Quick) {
     $installEdgeCdp = $false
     $installObsidian = $false
@@ -111,16 +138,48 @@ if ($Quick) {
     $installMs365 = $false
     $installCliTools = $false
     $installPythonTools = $false
+    $installVision = $false
+    $installDoc = $false
+    $installRag = $false
+    $installWord = $false
+    $installSession = $false
     $installSkills = $false
     $installNpmSkills = $false
+} elseif ($componentList.Count -gt 0) {
+    # -Component mode: only enable specified components (takes priority over TestMode)
+    $installVision = ($componentList -contains "vision" -or $componentList -contains "python-tools")
+    $installDoc = ($componentList -contains "doc" -or $componentList -contains "python-tools")
+    $installRag = ($componentList -contains "rag" -or $componentList -contains "python-tools")
+    $installWord = ($componentList -contains "word" -or $componentList -contains "python-tools")
+    $installSession = ($componentList -contains "session" -or $componentList -contains "python-tools")
+    $installEdgeCdp = ($componentList -contains "edge-cdp")
+    $installObsidian = ($componentList -contains "obsidian")
+    $installAutocad = ($componentList -contains "autocad")
+    $installMs365 = ($componentList -contains "ms365")
+    $installCliTools = ($componentList -contains "cli-tools")
+    $installSkills = ($componentList -contains "skills")
+    $installNpmSkills = ($componentList -contains "npm-skills")
+    # If no python sub-components selected, don't treat python-tools as selected
+    if (-not $installVision -and -not $installDoc -and -not $installRag -and -not $installWord -and -not $installSession) {
+        $installPythonTools = $false
+    } else {
+        $installPythonTools = $true
+    }
+    Write-Host "  Selected:"
+    Write-Host "    vision=$installVision doc=$installDoc rag=$installRag word=$installWord session=$installSession"
+    Write-Host "    edge-cdp=$installEdgeCdp obsidian=$installObsidian autocad=$installAutocad ms365=$installMs365"
 } elseif ($TestMode) {
-    # Test mode: core + python tools + skills, no MCPs/cli
     $installEdgeCdp = $false
     $installObsidian = $false
     $installAutocad = $false
     $installMs365 = $false
     $installCliTools = $false
     $installPythonTools = $true
+    $installVision = $true
+    $installDoc = $true
+    $installRag = $true
+    $installWord = $true
+    $installSession = $true
     $installSkills = $true
     $installNpmSkills = $false
 } elseif ($Full) {
@@ -130,8 +189,35 @@ if ($Quick) {
     $installMs365 = $true
     $installCliTools = $true
     $installPythonTools = $true
+    $installVision = $true
+    $installDoc = $true
+    $installRag = $true
+    $installWord = $true
+    $installSession = $true
     $installSkills = $true
     $installNpmSkills = $true
+} elseif ($Add) {
+    # Add mode: interactive selection of components to add
+    Write-Host ""
+    Write-Host "  Select components to ADD to your existing setup:" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  Python Tools (sub-components):" -ForegroundColor Yellow
+    $installVision = (Read-Host "    vision — Doubao image/PDF/PPTX recognition    [y/N]") -eq "y"
+    $installDoc = (Read-Host "    doc — PDF/PPTX batch to Markdown               [y/N]") -eq "y"
+    $installRag = (Read-Host "    rag — Chroma vector knowledge base              [y/N]") -eq "y"
+    $installWord = (Read-Host "    word — Word document generation                 [y/N]") -eq "y"
+    $installSession = (Read-Host "    session — session history management            [Y/n]") -ne "n"
+    $installPythonTools = ($installVision -or $installDoc -or $installRag -or $installWord -or $installSession)
+    Write-Host ""
+    Write-Host "  MCP Servers:" -ForegroundColor Yellow
+    $installEdgeCdp = (Read-Host "    edge-cdp — Edge browser automation              [y/N]") -eq "y"
+    $installObsidian = (Read-Host "    obsidian — Obsidian note control                [y/N]") -eq "y"
+    $installAutocad = (Read-Host "    autocad — AutoCAD COM control                   [y/N]") -eq "y"
+    $installMs365 = (Read-Host "    ms365 — Microsoft 365 Graph API                 [y/N]") -eq "y"
+    Write-Host ""
+    Write-Host "  Other:" -ForegroundColor Yellow
+    $installCliTools = (Read-Host "    cli-tools — starship/fzf/rg/eza/bat/delta       [y/N]") -eq "y"
+    $installSkills = (Read-Host "    skills — batch/file/daily automation            [y/N]") -eq "y"
 } else {
     Write-Host ""
     Write-Host "  Select components to install:" -ForegroundColor Cyan
@@ -188,7 +274,7 @@ if (-not $DeepSeekKey) {
     Write-Host "  [WARN] No DeepSeek key provided. You can add it later in ~/.claude/.env" -ForegroundColor Yellow
 }
 
-if (-not $ArkKey -and $installPythonTools) {
+if (-not $ArkKey -and $installVision) {
     Write-Host ""
     Write-Host "  Doubao/ARK API Key (Optional, for vision/image tools)" -ForegroundColor Yellow
     Write-Host "  Get your key at: https://console.volcengine.com/ark"
@@ -215,54 +301,86 @@ Write-Host "Step 3/5: Installing Files" -ForegroundColor Yellow
 Write-Host "────────────────────────────" -ForegroundColor Yellow
 
 # Prepare install directory
-if ((Test-Path $installDir) -and (-not $TestMode)) {
+if ((Test-Path $installDir) -and (-not $TestMode) -and (-not $Add)) {
     $existingVersion = "$installDir\.workflow-version"
     if (Test-Path $existingVersion) {
         Write-Host "  Existing claude-workflow installation detected. Upgrading..." -ForegroundColor Yellow
     } else {
         Write-Host "  ~/.claude/ exists but is not a claude-workflow installation." -ForegroundColor Yellow
         if (-not $Yes) {
-            $choice = Read-Host "  [B]ackup and fresh install / [U]pgrade (preserve .env/projects) / [A]bort"
-            switch ($choice.Substring(0,1).ToUpper()) {
-                "A" { Write-Host "Aborted."; exit 0 }
-            }
+            $choice = Read-Host "  Press Enter to continue (will back up existing files), or [A] to abort"
+            if ($choice -eq "A") { Write-Host "Aborted."; exit 0 }
         }
     }
-    # Backup settings.json and mcp.json if they exist
     $backupDir = "$installDir\backups\pre-upgrade"
     Backup-IfExists "$installDir\settings.json" $backupDir
     Backup-IfExists "$installDir\mcp.json" $backupDir
 }
 
-# Copy and render templates
-Write-Host "  Rendering config templates..."
-$tokens = @{
-    INSTALL_DIR        = $installDir
-    WORKSPACE_DIR      = $WorkspaceDir
-    USER_HOME          = $env:USERPROFILE
-    PYTHON_PATH        = $envInfo.PythonPath
-    OBSIDIAN_VAULT     = $(if ($obsidianVault) { $obsidianVault } else { "" })
-    OBSIDIAN_ENABLED   = $installObsidian.ToString().ToLower()
-    AUTOCAD_ENABLED    = $installAutocad.ToString().ToLower()
-    MS365_ENABLED      = $installMs365.ToString().ToLower()
-    EDGE_CDP_ENABLED   = $installEdgeCdp.ToString().ToLower()
-    DEEPSEEK_API_KEY   = $(if ($DeepSeekKey) { $DeepSeekKey } else { "YOUR_DEEPSEEK_API_KEY_HERE" })
-    ARK_API_KEY        = $(if ($ArkKey) { $ArkKey } else { "" })
-    MS365_ACCOUNT      = "YOUR_M365_ACCOUNT_HERE"
-    EXTRA_ALLOWED_PATHS = $extraPaths
+# ─── Config installation ───
+if ($Add) {
+    # Incremental mode: merge patches into existing config
+    Write-Host "  Applying component patches to existing config..."
+    New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+    $patchDir = "$ScriptDir\config\patches"
+
+    if ($installEdgeCdp)   { Merge-SettingsJson -SettingsPath "$installDir\settings.json" -PatchPath "$patchDir\edge-cdp.json" }
+    if ($installObsidian)  { Merge-SettingsJson -SettingsPath "$installDir\settings.json" -PatchPath "$patchDir\obsidian.json" }
+    if ($installAutocad)   { Merge-SettingsJson -SettingsPath "$installDir\settings.json" -PatchPath "$patchDir\autocad.json" }
+    if ($installMs365)     { Merge-SettingsJson -SettingsPath "$installDir\settings.json" -PatchPath "$patchDir\ms365.json" }
+} else {
+    # Fresh install: render templates from scratch
+    Write-Host "  Rendering config templates..."
+    $tokens = @{
+        INSTALL_DIR        = $installDir
+        WORKSPACE_DIR      = $WorkspaceDir
+        USER_HOME          = $env:USERPROFILE
+        PYTHON_PATH        = $envInfo.PythonPath
+        OBSIDIAN_VAULT     = $(if ($obsidianVault) { $obsidianVault } else { "" })
+        OBSIDIAN_ENABLED   = $installObsidian.ToString().ToLower()
+        AUTOCAD_ENABLED    = $installAutocad.ToString().ToLower()
+        MS365_ENABLED      = $installMs365.ToString().ToLower()
+        EDGE_CDP_ENABLED   = $installEdgeCdp.ToString().ToLower()
+        DEEPSEEK_API_KEY   = $(if ($DeepSeekKey) { $DeepSeekKey } else { "YOUR_DEEPSEEK_API_KEY_HERE" })
+        ARK_API_KEY        = $(if ($ArkKey) { $ArkKey } else { "" })
+        MS365_ACCOUNT      = "YOUR_M365_ACCOUNT_HERE"
+        EXTRA_ALLOWED_PATHS = $extraPaths
+    }
+    Invoke-TemplateRendering -TemplateDir "$ScriptDir\config" -OutputDir $installDir -Tokens $tokens
 }
 
-Invoke-TemplateRendering -TemplateDir "$ScriptDir\config" -OutputDir $installDir -Tokens $tokens
-
-# Copy tools
+# ─── Python tools (sub-component granularity) ───
 if ($installPythonTools) {
     Write-Host "  Installing Python tools..."
     $pyToolsDest = "$installDir\tools"
     New-Item -ItemType Directory -Force -Path $pyToolsDest | Out-Null
-    Copy-Item "$ScriptDir\tools\python\*.py" $pyToolsDest -Force
+
+    if ($installVision) {
+        Copy-Item "$ScriptDir\tools\python\multimodal_vision.py" $pyToolsDest -Force
+        Copy-Item "$ScriptDir\tools\python\clipboard_vision.py" $pyToolsDest -Force -ErrorAction SilentlyContinue
+        Write-Host "    vision tools installed"
+    }
+    if ($installDoc) {
+        Copy-Item "$ScriptDir\tools\python\doc_preprocessor.py" $pyToolsDest -Force
+        Write-Host "    doc tools installed"
+    }
+    if ($installRag) {
+        Copy-Item "$ScriptDir\tools\python\knowledge_base.py" $pyToolsDest -Force
+        Write-Host "    rag tools installed"
+    }
+    if ($installWord) {
+        Copy-Item "$ScriptDir\tools\python\word_builder.py" $pyToolsDest -Force
+        Copy-Item "$ScriptDir\tools\python\word_omml.py" $pyToolsDest -Force -ErrorAction SilentlyContinue
+        Write-Host "    word tools installed"
+    }
+    if ($installSession) {
+        Copy-Item "$ScriptDir\tools\python\session_manager.py" $pyToolsDest -Force
+        Copy-Item "$ScriptDir\tools\python\session_questions.py" $pyToolsDest -Force
+        Write-Host "    session tools installed"
+    }
 }
 
-# Copy Node.js tools
+# Copy Node.js tools (always useful)
 Copy-Item "$ScriptDir\tools\node\*" "$installDir\tools\" -Force -ErrorAction SilentlyContinue
 
 # Copy hooks
@@ -359,9 +477,8 @@ Write-Host ""
 Write-Host "Step 4/5: Shell Integration" -ForegroundColor Yellow
 Write-Host "─────────────────────────────" -ForegroundColor Yellow
 
-if ($TestMode) {
-    Write-Host "  [SKIP] Test mode: shell integration skipped" -ForegroundColor DarkGray
-    Write-Host "  [SKIP] Test mode: .bashrc / .gitconfig / starship untouched" -ForegroundColor DarkGray
+if ($TestMode -or $Add) {
+    Write-Host "  [SKIP] Shell integration skipped ($(if ($TestMode) { 'test mode' } else { 'add mode' }))" -ForegroundColor DarkGray
 } else {
     # .bashrc
     $bashrcSnippet = Get-Content "$ScriptDir\config\bashrc-snippet.template" -Raw -Encoding UTF8

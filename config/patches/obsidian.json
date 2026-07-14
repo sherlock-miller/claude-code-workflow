@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": ["mcp__obsidian__*", "Bash(npx:*)"]
+  },
+  "mcpServers": {
+    "obsidian": {
+      "command": "node",
+      "args": []
+    }
+  }
+}

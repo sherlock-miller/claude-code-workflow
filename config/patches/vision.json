@@ -1,0 +1,5 @@
+{
+  "files": ["multimodal_vision.py", "clipboard_vision.py"],
+  "pip": ["Pillow", "requests", "pyperclip", "volcengine-python-sdk", "PyMuPDF", "python-pptx"],
+  "description": "Doubao/ARK multimodal vision API — image, PDF, PPTX recognition"
+}
