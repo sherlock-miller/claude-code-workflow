@@ -6,7 +6,7 @@
   [switch]$ForceRestart
 )
 
-$script:DefaultVault = "E:\claude code\codex的obsidian经验\obsidian-vault"
+$script:DefaultVault = "C:\FromE\claude code\codex的obsidian经验\obsidian-vault"
 
 if (-not $VaultPath) { $VaultPath = $DefaultVault }
 
