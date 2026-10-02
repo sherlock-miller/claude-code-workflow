@@ -7,9 +7,9 @@
 用法:
     python multimodal_vision.py <file> [-p "提示词"] [--max-pages 5] [-v]
 
-环境变量:
-    ARK_API_KEY  — 火山引擎 API Key (可选，脚本内置默认值)
-    ARK_MODEL    — 推理接入点 ID (可选，脚本内置默认值)
+环境变量 / 密钥文件:
+    ARK_API_KEY  — 火山引擎 API Key（环境变量优先，其次读 .secrets.env）
+    ARK_MODEL    — 推理接入点 ID（同上）
 
 依赖:
     pip install volcenginesdkarkruntime PyMuPDF python-pptx Pillow
@@ -24,14 +24,28 @@ import json
 from pathlib import Path
 
 # ============================================================
-# 默认配置 — 可通过环境变量覆盖
+# 配置 — 密钥来源：环境变量 > .secrets.env（不入版本库）
 # ============================================================
-_ARK_API_KEY = "ark-a73d32ae-9cae-42a7-97bc-d5700f069306-e5ac6"
-_ARK_MODEL   = "ep-20260528213610-cl26k"  # Doubao-Seed-2.0-lite (2026-05-28 upgraded from Mini)
-_BASE_URL    = "https://ark.cn-beijing.volces.com/api/v3"
+def _load_secrets():
+    """从若干候选位置载入 .secrets.env（不覆盖已存在的环境变量）。"""
+    candidates = [
+        Path(__file__).resolve().parent / ".secrets.env",
+        Path.home() / ".claude" / "tools" / ".secrets.env",
+    ]
+    for p in candidates:
+        if not p.exists():
+            continue
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
 
-ARK_API_KEY = os.environ.get("ARK_API_KEY", _ARK_API_KEY)
-ARK_MODEL   = os.environ.get("ARK_MODEL", _ARK_MODEL)
+_load_secrets()
+
+_BASE_URL    = "https://ark.cn-beijing.volces.com/api/v3"
+ARK_API_KEY = os.environ.get("ARK_API_KEY", "")
+ARK_MODEL   = os.environ.get("ARK_MODEL", "ep-20260528213610-cl26k")
 
 # 支持的图片后缀
 IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"})

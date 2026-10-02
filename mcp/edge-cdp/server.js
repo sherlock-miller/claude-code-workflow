@@ -32,8 +32,33 @@ const MAX_SCREENSHOT_WIDTH = 1920;
 const DEFAULT_TIMEOUT = 15000;
 
 // --- Doubao Vision API config ---
-const DOUBAO_API_KEY = "ark-a73d32ae-9cae-42a7-97bc-d5700f069306-e5ac6";
-const DOUBAO_MODEL = "ep-20260527110933-btjkj";
+// 密钥来源：环境变量 > 候选位置的 .secrets.env（不入版本库）
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { fileURLToPath } from "node:url";
+const __dirname_ = path.dirname(fileURLToPath(import.meta.url));
+(function loadSecrets() {
+  const candidates = [
+    path.join(__dirname_, ".secrets.env"),
+    path.join(__dirname_, "..", "..", ".secrets.env"),
+    path.join(os.homedir(), ".claude", "tools", ".secrets.env"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (!fs.existsSync(p)) continue;
+      for (const line of fs.readFileSync(p, "utf-8").split(/\r?\n/)) {
+        const s = line.trim();
+        if (!s || s.startsWith("#") || !s.includes("=")) continue;
+        const i = s.indexOf("=");
+        const k = s.slice(0, i).trim(), v = s.slice(i + 1).trim();
+        if (!process.env[k]) process.env[k] = v;
+      }
+    } catch {}
+  }
+})();
+const DOUBAO_API_KEY = process.env.ARK_API_KEY || "";
+const DOUBAO_MODEL = process.env.ARK_MODEL || "ep-20260527110933-btjkj";
 const DOUBAO_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 
 // --- Global state ---

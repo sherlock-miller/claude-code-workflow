@@ -31,12 +31,26 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 # ============================================================
-# 配置
+# 配置 — 密钥来源：环境变量 > .secrets.env（不入版本库）
 # ============================================================
-ARK_API_KEY = os.environ.get(
-    "ARK_API_KEY",
-    "ark-a73d32ae-9cae-42a7-97bc-d5700f069306-e5ac6"
-)
+def _load_secrets():
+    """从若干候选位置载入 .secrets.env（不覆盖已存在的环境变量）。"""
+    candidates = [
+        Path(__file__).resolve().parent / ".secrets.env",
+        Path.home() / ".claude" / "tools" / ".secrets.env",
+    ]
+    for p in candidates:
+        if not p.exists():
+            continue
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
+_load_secrets()
+
+ARK_API_KEY = os.environ.get("ARK_API_KEY", "")
 ARK_MODEL = os.environ.get("ARK_MODEL", "ep-20260527110933-btjkj")
 BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 
