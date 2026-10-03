@@ -1,6 +1,6 @@
 # Claude Code 全局能力配置
 
-> 最后更新: 2026-07-06 | 所有能力在任意工作目录中可用
+> 最后更新: 2026-10-03 | 所有能力在任意工作目录中可用
 
 ### DeepSeek API + Claude Code 配置（2026-05-31 基于双方官方文档验证）
 - **使用教程**: `{{WORKSPACE_DIR}}\Claude Code + DeepSeek API 使用指南.md`
@@ -153,11 +153,11 @@
 | Memory | `~/.claude/projects/` |
 | Shell 配置 | `~/.bashrc`, `~/.config/starship.toml`, `~/.gitconfig` |
 | CLI 工具链 | `~/.local/bin/` (starship, fzf, zoxide, rg, eza, bat, delta) |
-| 终端文档 | `~/.claude/projects/E--claude-code/memory/terminal_toolchain.md` |
+| 终端文档 | `~/.claude/projects/C--FromE-claude-code/memory/terminal_toolchain.md` |
 
 ## Memory 系统
 
-跨会话持久记忆，存储在 `~/.claude/projects/<项目>/memory/` 中。记录用户偏好、项目上下文、能力配置、反馈等。在任意目录工作时自动加载 `MEMORY.md` 索引。
+跨会话持久记忆，存储在 `~/.claude/projects/<项目>/memory/` 中。记录用户偏好、项目上下文、能力配置、反馈等。会话自动加载所属项目目录的 `MEMORY.md` 索引；如需跨目录共享记忆主库，可在全局 `~/.claude/CLAUDE.md` 中用 `@` 导入主库的 `MEMORY.md`。
 
 ## 行为规则（全局生效）
 

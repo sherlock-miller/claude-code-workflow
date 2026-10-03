@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-BASE = os.path.expanduser("~/.claude/projects/E--claude-code")
+BASE = os.path.expanduser("~/.claude/projects/C--FromE-claude-code")
 
 
 def find_sessions():

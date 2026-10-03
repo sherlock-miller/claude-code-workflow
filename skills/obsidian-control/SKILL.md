@@ -62,10 +62,10 @@ window.app.vault / window.app.workspace (Obsidian 内部 API)
 
 | 配置项 | 值 | 来源 |
 |--------|-----|------|
-| Vault 路径 | `E:\claude code\codex的obsidian经验\obsidian-vault` | `obsidian_cdp_core.cjs` DEFAULTS |
-| CDP 地址 | `http://127.0.0.1:9223` | `obsidian_cdp_core.cjs` DEFAULTS |
+| Vault 路径 | 环境变量 `OBSIDIAN_VAULT_PATH`，未设置时为空（由工具参数或启动参数指定） | `obsidian_cdp_core.cjs` DEFAULTS |
+| CDP 地址 | `http://127.0.0.1:9225`（可用 `OBSIDIAN_CDP_URL` 覆盖） | `obsidian_cdp_core.cjs` DEFAULTS |
 | 超时 | 15000ms | `obsidian_cdp_core.cjs` DEFAULTS |
-| Debug 端口 | 9223 | `server.cjs` OBSIDIAN_DEBUG_PORT 环境变量 |
+| Debug 端口 | 启动脚本默认 9223（`-DebugPort` 可覆盖）；连接默认 9225（`OBSIDIAN_CDP_URL` / `cdp_url` 可覆盖）；**两者须一致** | `obsidian_control.ps1` / `obsidian_cdp_core.cjs` |
 | Obsidian 路径 | 自动检测 7 个常见位置 + 全盘搜索 | `obsidian_control.ps1` Find-ObsidianExe |
 
 ## 前置条件
@@ -74,7 +74,7 @@ window.app.vault / window.app.workspace (Obsidian 内部 API)
 2. **Node.js ≥ 18** — 运行 MCP server 和 CDP 脚本
 3. **PowerShell** — 启动 Obsidian（Windows 自带）
 4. **npm 依赖** — `obsidian-mcp/` 下已安装 `@modelcontextprotocol/sdk` 和 `playwright-core`
-5. **Obsidian 以调试模式运行** — 必须带 `--remote-debugging-port=9223` 启动
+5. **Obsidian 以调试模式运行** — 必须带 `--remote-debugging-port=<端口>` 启动（端口须与连接地址一致；启动脚本默认 9223，连接默认 9225）
 
 ## 故障排除
 
