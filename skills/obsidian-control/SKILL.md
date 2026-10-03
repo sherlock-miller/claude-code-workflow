@@ -4,7 +4,7 @@
 
 直接控制 Obsidian 桌面应用的完整能力。通过 Electron Chrome DevTools Protocol (CDP) 连接 Obsidian 运行时，调用 `window.app` 内部 API，实现对 vault 的读写控制、文件验证和截图。
 
-**核心思路**: Obsidian 是 Electron 应用 → `--remote-debugging-port=9223` 启动 → `playwright-core` 通过 CDP 连接 → `page.evaluate()` 注入脚本调用 Obsidian 内部 API。
+**核心思路**: Obsidian 是 Electron 应用 → `--remote-debugging-port=9225` 启动 → `playwright-core` 通过 CDP 连接 → `page.evaluate()` 注入脚本调用 Obsidian 内部 API。
 
 ## 触发条件
 
@@ -28,7 +28,7 @@ obsidian-mcp/server.cjs (MCP Server — 8 tools)
 skills/obsidian-control/scripts/obsidian_cdp_core.cjs (CDP 控制核心)
     │ playwright-core .connectOverCDP()
     ▼
-Obsidian Electron (--remote-debugging-port=9223)
+Obsidian Electron (--remote-debugging-port=9225)
     │ page.evaluate()
     ▼
 window.app.vault / window.app.workspace (Obsidian 内部 API)
@@ -65,7 +65,7 @@ window.app.vault / window.app.workspace (Obsidian 内部 API)
 | Vault 路径 | 环境变量 `OBSIDIAN_VAULT_PATH`，未设置时为空（由工具参数或启动参数指定） | `obsidian_cdp_core.cjs` DEFAULTS |
 | CDP 地址 | `http://127.0.0.1:9225`（可用 `OBSIDIAN_CDP_URL` 覆盖） | `obsidian_cdp_core.cjs` DEFAULTS |
 | 超时 | 15000ms | `obsidian_cdp_core.cjs` DEFAULTS |
-| Debug 端口 | 启动脚本默认 9223（`-DebugPort` 可覆盖）；连接默认 9225（`OBSIDIAN_CDP_URL` / `cdp_url` 可覆盖）；**两者须一致** | `obsidian_control.ps1` / `obsidian_cdp_core.cjs` |
+| Debug 端口 | 统一默认 9225（启动用 `-DebugPort`、连接用 `OBSIDIAN_CDP_URL` / `cdp_url` 可覆盖；**启动与连接须一致**） | `obsidian_control.ps1` / `obsidian_cdp_core.cjs` |
 | Obsidian 路径 | 自动检测 7 个常见位置 + 全盘搜索 | `obsidian_control.ps1` Find-ObsidianExe |
 
 ## 前置条件
@@ -74,13 +74,13 @@ window.app.vault / window.app.workspace (Obsidian 内部 API)
 2. **Node.js ≥ 18** — 运行 MCP server 和 CDP 脚本
 3. **PowerShell** — 启动 Obsidian（Windows 自带）
 4. **npm 依赖** — `obsidian-mcp/` 下已安装 `@modelcontextprotocol/sdk` 和 `playwright-core`
-5. **Obsidian 以调试模式运行** — 必须带 `--remote-debugging-port=<端口>` 启动（端口须与连接地址一致；启动脚本默认 9223，连接默认 9225）
+5. **Obsidian 以调试模式运行** — 必须带 `--remote-debugging-port=<端口>` 启动（端口须与连接地址一致；默认 9225）
 
 ## 故障排除
 
 | 症状 | 原因 | 解决 |
 |------|------|------|
-| CDP 连接失败 | Obsidian 未启动或未开调试端口 | 执行 `obsidian_launch` 或手动启动 Obsidian 带 `--remote-debugging-port=9223` |
+| CDP 连接失败 | Obsidian 未启动或未开调试端口 | 执行 `obsidian_launch` 或手动启动 Obsidian 带 `--remote-debugging-port=9225` |
 | `window.app not available` | 连接到了 webview 而非主编辑器窗口 | 重启 Obsidian（旧实例可能只暴露了插件 webview） |
 | `File not found in vault` | 文件由外部创建，Obsidian 索引未刷新 | 已内置 fallback: 检测到新文件时自动通过 `vault.create()` 注册 |
 | `playwright-core not found` | npm 依赖未安装 | `cd obsidian-mcp && npm install` |

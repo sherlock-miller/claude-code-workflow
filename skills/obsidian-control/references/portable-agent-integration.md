@@ -97,7 +97,7 @@ Get-ChildItem -Path $env:LOCALAPPDATA -Filter Obsidian.exe -Recurse -Depth 4
       "command": "node",
       "args": ["<工作区绝对路径>/obsidian-mcp/server.cjs"],
       "env": {
-        "OBSIDIAN_DEBUG_PORT": "9223"
+        "OBSIDIAN_DEBUG_PORT": "9225"
       },
       "disabled": false
     }
@@ -150,7 +150,7 @@ node smoke-test.cjs obsidian_verify_all
 1. **PowerShell → bash**: macOS 不自带 PowerShell。Obsidian 启动脚本需改为 bash:
    ```bash
    #!/bin/bash
-   open -a Obsidian --args --remote-debugging-port=9223
+   open -a Obsidian --args --remote-debugging-port=9225
    ```
 2. **路径分隔符**: `\\` → `/`
 3. **Obsidian 路径**: macOS 通常在 `/Applications/Obsidian.app/Contents/MacOS/Obsidian`
@@ -159,7 +159,7 @@ node smoke-test.cjs obsidian_verify_all
 
 1. **启动方式**: 直接用二进制:
    ```bash
-   /usr/bin/obsidian --remote-debugging-port=9223
+   /usr/bin/obsidian --remote-debugging-port=9225
    ```
 2. **路径分隔符**: `\\` → `/`
 3. **Vault 路径**: 一般是 `~/Documents/Obsidian Vault/`

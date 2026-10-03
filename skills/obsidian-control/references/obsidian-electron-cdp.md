@@ -22,17 +22,17 @@ CDP 方案解决了所有这些读状态问题。
 
 ```powershell
 # 基本启动
-& "C:\Program Files\Obsidian\Obsidian.exe" --remote-debugging-port=9223
+& "C:\Program Files\Obsidian\Obsidian.exe" --remote-debugging-port=9225
 
 # 强制重启（先杀旧进程）
 taskkill /f /im Obsidian.exe 2>$null
 Start-Sleep 2
-& "C:\Program Files\Obsidian\Obsidian.exe" --remote-debugging-port=9223
+& "C:\Program Files\Obsidian\Obsidian.exe" --remote-debugging-port=9225
 ```
 
 启动后验证 CDP 可用:
 ```bash
-curl http://127.0.0.1:9223/json/version
+curl http://127.0.0.1:9225/json/version
 # 返回 Browser, V8-Version, webSocketDebuggerUrl
 ```
 
@@ -52,7 +52,7 @@ curl http://127.0.0.1:9223/json/version
 const pw = require('playwright-core');
 
 // 连接到 Electron CDP
-const browser = await pw.chromium.connectOverCDP('http://127.0.0.1:9223');
+const browser = await pw.chromium.connectOverCDP('http://127.0.0.1:9225');
 
 // Electron 只有一个 BrowserContext
 const contexts = browser.contexts();
@@ -239,7 +239,7 @@ async () => {
 - `starter.html` — 未打开 vault
 - 插件 webview — 如浏览器插件打开的第三方网页
 
-**调试**: `curl http://127.0.0.1:9223/json` 查看页面列表
+**调试**: `curl http://127.0.0.1:9225/json` 查看页面列表
 
 **解决**:
 - 如果是 starter.html → 调用 `vault-open` IPC 切换
@@ -264,7 +264,7 @@ typeof window.app.workspace.getLeaf        // "function"
 **症状**: `connectOverCDP` 抛出 timeout 错误
 
 **解决**:
-1. 检查端口是否正确 (`curl http://127.0.0.1:9223/json/version`)
+1. 检查端口是否正确 (`curl http://127.0.0.1:9225/json/version`)
 2. 增加 `timeout` 参数: `connectOverCDP(url, { timeout: 30000 })`
 3. 检查防火墙是否阻止 localhost 连接
 

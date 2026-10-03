@@ -1,7 +1,7 @@
 ﻿param(
   [string]$Action = "launch",
   [string]$VaultPath = "",
-  [int]$DebugPort = 9223,
+  [int]$DebugPort = 9225,
   [int]$TimeoutSeconds = 30,
   [switch]$ForceRestart
 )
